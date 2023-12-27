@@ -91,7 +91,7 @@ fn bitcoin_genesis_tx() -> Transaction {
         .push_opcode(OP_CHECKSIG)
         .into_script();
     ret.output.push(TxOut {
-        value: 50 * COIN_VALUE,
+        value: 367 * COIN_VALUE,
         script_pubkey: out_script
     });
 
@@ -111,9 +111,9 @@ pub fn genesis_block(network: Network) -> Block {
                     version: block::Version::ONE,
                     prev_blockhash: Hash::all_zeros(),
                     merkle_root,
-                    time: 1231006505,
-                    bits: CompactTarget::from_consensus(0x1d00ffff),
-                    nonce: 2083236893
+                    time: 1410213600,
+                    bits: CompactTarget::from_consensus(0x1e0ffff0),
+                    nonce: 237174
                 },
                 txdata,
             }
@@ -125,8 +125,8 @@ pub fn genesis_block(network: Network) -> Block {
                     prev_blockhash: Hash::all_zeros(),
                     merkle_root,
                     time: 1296688602,
-                    bits: CompactTarget::from_consensus(0x1d00ffff),
-                    nonce: 414098458
+                    bits: CompactTarget::from_consensus(0x1e0ffff0),
+                    nonce: 237174
                 },
                 txdata,
             }
@@ -137,9 +137,9 @@ pub fn genesis_block(network: Network) -> Block {
                     version: block::Version::ONE,
                     prev_blockhash: Hash::all_zeros(),
                     merkle_root,
-                    time: 1598918400,
-                    bits: CompactTarget::from_consensus(0x1e0377ae),
-                    nonce: 52613770
+                    time: 1410213600,
+                    bits: CompactTarget::from_consensus(0x207fffff),
+                    nonce: 12348
                 },
                 txdata,
             }
@@ -150,9 +150,9 @@ pub fn genesis_block(network: Network) -> Block {
                     version: block::Version::ONE,
                     prev_blockhash: Hash::all_zeros(),
                     merkle_root,
-                    time: 1296688602,
+                    time: 1410213600,
                     bits: CompactTarget::from_consensus(0x207fffff),
-                    nonce: 2
+                    nonce: 12348
                 },
                 txdata,
             }
