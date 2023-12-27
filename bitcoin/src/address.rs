@@ -1679,7 +1679,7 @@ mod tests {
 
     #[test]
     fn test_is_related_to_pubkey_p2pkh() {
-        let address_string = "1J4LVanjHMu3JkXbVrahNuQCTGCRRgfWWx";
+        let address_string = "Y23gqSoeYos6nX3fDdppijjVjNvjQvuqPK";
         let address = Address::from_str(address_string)
             .expect("address")
             .require_network(Network::Bitcoin)
@@ -1729,7 +1729,7 @@ mod tests {
 
         assert_eq!(
             address,
-            Address::from_str("bc1pgllnmtxs0g058qz7c6qgaqq4qknwrqj9z7rqn9e2dzhmcfmhlu4sfadf5e")
+            Address::from_str("gb1pn6l90xfrvrea57uwrs55qx8a5h2qqnqdgzdklfleaw7fkxk8q8tqhsc2wc")
                 .expect("address")
                 .require_network(Network::Bitcoin)
                 .expect("mainnet")
@@ -1755,7 +1755,7 @@ mod tests {
 
         assert_eq!(
             address,
-            Address::from_str("bc1pgllnmtxs0g058qz7c6qgaqq4qknwrqj9z7rqn9e2dzhmcfmhlu4sfadf5e")
+            Address::from_str("gb1pn6l90xfrvrea57uwrs55qx8a5h2qqnqdgzdklfleaw7fkxk8q8tqhsc2wc")
                 .expect("address")
                 .require_network(Network::Bitcoin)
                 .expect("mainnet")
@@ -1807,7 +1807,7 @@ mod tests {
             "bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs",
             "bc1qvzvkjn4q3nszqxrv3nraga2r822xjty3ykvkuw",
             "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",
-            "bc1pgllnmtxs0g058qz7c6qgaqq4qknwrqj9z7rqn9e2dzhmcfmhlu4sfadf5e",
+            "gb1pn6l90xfrvrea57uwrs55qx8a5h2qqnqdgzdklfleaw7fkxk8q8tqhsc2wc",
         ];
         for addr in &addresses {
             let addr = Address::from_str(addr).unwrap().require_network(Network::Bitcoin).unwrap();
