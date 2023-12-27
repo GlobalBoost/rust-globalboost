@@ -1217,7 +1217,7 @@ mod tests {
             addr.script_pubkey(),
             ScriptBuf::from_hex("76a914162c5ea71c0b23f5b9022ef047c4a86470a5b07088ac").unwrap()
         );
-        assert_eq!(&addr.to_string(), "132F25rTsvBdp9JzLLBHP5mvGY66i1xdiM");
+        assert_eq!(&addr.to_string(), "Y23gqSoeYos6nX3fDdppijjVjNvjQvuqPK");
         assert_eq!(addr.address_type(), Some(AddressType::P2pkh));
         roundtrips(&addr);
     }
@@ -1226,7 +1226,7 @@ mod tests {
     fn test_p2pkh_from_key() {
         let key = "048d5141948c1702e8c95f438815794b87f706a8d4cd2bffad1dc1570971032c9b6042a0431ded2478b5c9cf2d81c124a5e57347a3c63ef0e7716cf54d613ba183".parse::<PublicKey>().unwrap();
         let addr = Address::p2pkh(&key, Bitcoin);
-        assert_eq!(&addr.to_string(), "1QJVDzdqb1VpbDK7uDeyVXy9mR27CJiyhY");
+        assert_eq!(&addr.to_string(), "YPKw3Mb2FuBHZb3nnXJWqBvjEFrjuascLW");
 
         let key = "03df154ebfcf29d29cc10d5c2565018bce2d9edbab267c31d2caf44a63056cf99f"
             .parse::<PublicKey>()
@@ -1248,7 +1248,7 @@ mod tests {
             addr.script_pubkey(),
             ScriptBuf::from_hex("a914162c5ea71c0b23f5b9022ef047c4a86470a5b07087").unwrap(),
         );
-        assert_eq!(&addr.to_string(), "33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k");
+        assert_eq!(&addr.to_string(), "xy15tBHWZzbRVPh2jeUanWcGkeuDVBfB1M");
         assert_eq!(addr.address_type(), Some(AddressType::P2sh));
         roundtrips(&addr);
     }
@@ -1275,7 +1275,7 @@ mod tests {
             .parse::<PublicKey>()
             .unwrap();
         let addr = Address::p2wpkh(&key, Bitcoin).unwrap();
-        assert_eq!(&addr.to_string(), "bc1qvzvkjn4q3nszqxrv3nraga2r822xjty3ykvkuw");
+        assert_eq!(&addr.to_string(), "gb1qvzvkjn4q3nszqxrv3nraga2r822xjty3zr5f88");
         assert_eq!(addr.address_type(), Some(AddressType::P2wpkh));
         roundtrips(&addr);
 
@@ -1291,7 +1291,7 @@ mod tests {
         let addr = Address::p2wsh(&script, Bitcoin);
         assert_eq!(
             &addr.to_string(),
-            "bc1qwqdg6squsna38e46795at95yu9atm8azzmyvckulcc7kytlcckxswvvzej"
+            "gb1qwqdg6squsna38e46795at95yu9atm8azzmyvckulcc7kytlcckxs23z733"
         );
         assert_eq!(addr.address_type(), Some(AddressType::P2wsh));
         roundtrips(&addr);
@@ -1304,7 +1304,7 @@ mod tests {
             .parse::<PublicKey>()
             .unwrap();
         let addr = Address::p2shwpkh(&key, Bitcoin).unwrap();
-        assert_eq!(&addr.to_string(), "3QBRmWNqqBGme9er7fMkGqtZtp4gjMFxhE");
+        assert_eq!(&addr.to_string(), "yKUFi4KSyMNBEELTPszTFeMzEQb63A6Eye");
         assert_eq!(addr.address_type(), Some(AddressType::P2sh));
         roundtrips(&addr);
 
@@ -1318,7 +1318,7 @@ mod tests {
         // stolen from Bitcoin transaction f9ee2be4df05041d0e0a35d7caa3157495ca4f93b233234c9967b6901dacf7a9
         let script = ScriptBuf::from_hex("522103e5529d8eaa3d559903adb2e881eb06c86ac2574ffa503c45f4e942e2a693b33e2102e5f10fcdcdbab211e0af6a481f5532536ec61a5fdbf7183770cf8680fe729d8152ae").unwrap();
         let addr = Address::p2shwsh(&script, Bitcoin);
-        assert_eq!(&addr.to_string(), "36EqgNnsWW94SreZgBWc1ANC6wpFZwirHr");
+        assert_eq!(&addr.to_string(), "y1XfcvjUegEU2wLAxQ9JyxqcSYLemrZAvP");
         assert_eq!(addr.address_type(), Some(AddressType::P2sh));
         roundtrips(&addr);
     }
@@ -1629,7 +1629,7 @@ mod tests {
         let address = Address::p2tr(&secp, internal_key, None, Network::Bitcoin);
         assert_eq!(
             address.to_string(),
-            "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr"
+            "gb1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqjyrlsq"
         );
         assert_eq!(address.address_type(), Some(AddressType::P2tr));
         roundtrips(&address);
