@@ -1729,7 +1729,7 @@ mod tests {
 
         assert_eq!(
             address,
-            Address::from_str("gb1p4486t76tzjttyv48qnxwg4v93affezfzrvjd5t43dndf3dl42p3qtl3d2n")
+            Address::from_str("gb1pwp7f59zqhhrw5v3kqj60ct7674k9ukw3dmr29yw9w6u8ntan7flq53x9ex")
                 .expect("address")
                 .require_network(Network::Bitcoin)
                 .expect("mainnet")
@@ -1755,7 +1755,7 @@ mod tests {
 
         assert_eq!(
             address,
-            Address::from_str("gb1pgllnmtxs0g058qz7c6qgaqq4qknwrqj9z7rqn9e2dzhmcfmhlu4sdqr4u6")
+            Address::from_str("gb1pwp7f59zqhhrw5v3kqj60ct7674k9ukw3dmr29yw9w6u8ntan7flq53x9ex")
                 .expect("address")
                 .require_network(Network::Bitcoin)
                 .expect("mainnet")
