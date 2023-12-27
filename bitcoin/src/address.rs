@@ -1361,15 +1361,15 @@ mod tests {
     #[test]
     fn test_address_type() {
         let addresses = [
-            ("1QJVDzdqb1VpbDK7uDeyVXy9mR27CJiyhY", Some(AddressType::P2pkh)),
-            ("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k", Some(AddressType::P2sh)),
-            ("bc1qvzvkjn4q3nszqxrv3nraga2r822xjty3ykvkuw", Some(AddressType::P2wpkh)),
+            ("YD4KkFojqaGeJg2uYY2rFoWuP4go4XcaiS", Some(AddressType::P2pkh)),
+            ("yAunf1V5u622bnZjtrE4WqBQ9L8k3RXKVL", Some(AddressType::P2sh)),
+            ("gb1ql3mm9h4cz5hvyu93l0js9hyyy7tgchgx385mkp", Some(AddressType::P2wpkh)),
             (
-                "bc1qwqdg6squsna38e46795at95yu9atm8azzmyvckulcc7kytlcckxswvvzej",
+                "gb1p4486t76tzjttyv48qnxwg4v93affezfzrvjd5t43dndf3dl42p3qtl3d2n",
                 Some(AddressType::P2wsh),
             ),
             (
-                "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",
+                "gb1pegqhhn5k7vla2dt53a9usyrdxu3skgvsj9u0ztv6t557ywf4vegsg5msx6",
                 Some(AddressType::P2tr),
             ),
             // Related to future extensions, addresses are valid but have no type
