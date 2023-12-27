@@ -1679,13 +1679,13 @@ mod tests {
 
     #[test]
     fn test_is_related_to_pubkey_p2pkh() {
-        let address_string = "Y23gqSoeYos6nX3fDdppijjVjNvjQvuqPK";
+        let address_string = "YGX3q2J745kU9oNuMFsz5RqHiuxAcKUCzY";
         let address = Address::from_str(address_string)
             .expect("address")
             .require_network(Network::Bitcoin)
             .expect("mainnet");
 
-        let pubkey_string = "0347ff3dacd07a1f43805ec6808e801505a6e18245178609972a68afbc2777ff2b";
+        let pubkey_string = "03707c9a1440bdc6ea323604b4fc2fdaf56c5e59d16ec6a291c576b879afb3f27e";
         let pubkey = PublicKey::from_str(pubkey_string).expect("pubkey");
 
         let result = address.is_related_to_pubkey(&pubkey);
@@ -1721,7 +1721,7 @@ mod tests {
 
     #[test]
     fn test_is_related_to_pubkey_p2tr() {
-        let pubkey_string = "0347ff3dacd07a1f43805ec6808e801505a6e18245178609972a68afbc2777ff2b";
+        let pubkey_string = "03707c9a1440bdc6ea323604b4fc2fdaf56c5e59d16ec6a291c576b879afb3f27e";
         let pubkey = PublicKey::from_str(pubkey_string).expect("pubkey");
         let xonly_pubkey = XOnlyPublicKey::from(pubkey.inner);
         let tweaked_pubkey = TweakedPublicKey::dangerous_assume_tweaked(xonly_pubkey);
@@ -1729,7 +1729,7 @@ mod tests {
 
         assert_eq!(
             address,
-            Address::from_str("gb1pgllnmtxs0g058qz7c6qgaqq4qknwrqj9z7rqn9e2dzhmcfmhlu4sdqr4u6")
+            Address::from_str("gb1p4486t76tzjttyv48qnxwg4v93affezfzrvjd5t43dndf3dl42p3qtl3d2n")
                 .expect("address")
                 .require_network(Network::Bitcoin)
                 .expect("mainnet")
@@ -1747,7 +1747,7 @@ mod tests {
 
     #[test]
     fn test_is_related_to_xonly_pubkey() {
-        let pubkey_string = "0347ff3dacd07a1f43805ec6808e801505a6e18245178609972a68afbc2777ff2b";
+        let pubkey_string = "03707c9a1440bdc6ea323604b4fc2fdaf56c5e59d16ec6a291c576b879afb3f27e";
         let pubkey = PublicKey::from_str(pubkey_string).expect("pubkey");
         let xonly_pubkey = XOnlyPublicKey::from(pubkey.inner);
         let tweaked_pubkey = TweakedPublicKey::dangerous_assume_tweaked(xonly_pubkey);
