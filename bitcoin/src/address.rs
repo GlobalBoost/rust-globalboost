@@ -1800,13 +1800,13 @@ mod tests {
     #[test]
     fn test_matches_script_pubkey() {
         let addresses = [
-            "1QJVDzdqb1VpbDK7uDeyVXy9mR27CJiyhY",
-            "1J4LVanjHMu3JkXbVrahNuQCTGCRRgfWWx",
-            "33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k",
-            "3QBRmWNqqBGme9er7fMkGqtZtp4gjMFxhE",
-            "bc1zw508d6qejxtdg4y5r3zarvaryvaxxpcs",
-            "bc1qvzvkjn4q3nszqxrv3nraga2r822xjty3ykvkuw",
-            "bc1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxqkedrcr",
+            "YD4KkFojqaGeJg2uYY2rFoWuP4go4XcaiS",
+            "YE87wZct53LPmyDXyrViVBV89hLFUZMGfG",
+            "yGAAksjVfySiUP85gCNc49QpQCL2mAS8GY",
+            "y4hF8L8ig2yVDZoWEfiXW2EgLxvrsygyuu",
+            "gb1q0kr4lyqejz3qr8zagjd92k4sj7zgw6szt5w327",
+            "gb1qvsewn8ydgwweuvstzlsxqcve2wz6jx2htrtr8s",
+            "gb1pwwn7vxjp2kd5wgsa75q4tqkgf8we4nrtlmj79u8uxkc50d6024gscvgkwq",
             "gb1pn6l90xfrvrea57uwrs55qx8a5h2qqnqdgzdklfleaw7fkxk8q8tqhsc2wc",
         ];
         for addr in &addresses {
