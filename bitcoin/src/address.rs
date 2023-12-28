@@ -1658,7 +1658,7 @@ mod tests {
 
     #[test]
     fn test_is_related_to_pubkey_p2shwpkh() {
-        let address_string = "3EZQk4F8GURH5sqVMLTFisD17yNeKa7Dfs";
+        let address_string = "yAunf1V5u622bnZjtrE4WqBQ9L8k3RXKVL";
         let address = Address::from_str(address_string)
             .expect("address")
             .require_network(Network::Bitcoin)
