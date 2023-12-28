@@ -1553,7 +1553,7 @@ mod tests {
         {
             let addr =
                 Address::from_str(el).unwrap().require_network(Network::Bitcoin).expect("mainnet");
-            assert_eq!(addr.to_qr_uri(), format!("globalboost:{}", el));
+            assert_eq!(addr.to_qr_uri(), format!("bitcoin:{}", el));
         }
 
         for el in [
@@ -1563,7 +1563,7 @@ mod tests {
         .iter()
         {
             let addr = Address::from_str(el).unwrap().assume_checked();
-            assert_eq!(addr.to_qr_uri(), format!("GLOBALBOOST:{}", el.to_ascii_uppercase()));
+            assert_eq!(addr.to_qr_uri(), format!("BITCOIN:{}", el.to_ascii_uppercase()));
         }
     }
 
