@@ -1530,13 +1530,13 @@ mod tests {
             .unwrap()
         );
 
-        let addr = Address::from_str("bcrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl")
+        let addr = Address::from_str("gbrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl")
             .unwrap()
             .assume_checked();
         let json = serde_json::to_value(&addr).unwrap();
         assert_eq!(
             json,
-            serde_json::Value::String("bcrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl".to_owned())
+            serde_json::Value::String("gbrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl".to_owned())
         );
         let into: Address = serde_json::from_value::<Address<_>>(json).unwrap().assume_checked();
         assert_eq!(addr.to_string(), into.to_string());
@@ -1549,21 +1549,21 @@ mod tests {
     #[test]
     fn test_qr_string() {
         for el in
-            ["132F25rTsvBdp9JzLLBHP5mvGY66i1xdiM", "33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k"].iter()
+            ["YD4KkFojqaGeJg2uYY2rFoWuP4go4XcaiS", "yAunf1V5u622bnZjtrE4WqBQ9L8k3RXKVL"].iter()
         {
             let addr =
                 Address::from_str(el).unwrap().require_network(Network::Bitcoin).expect("mainnet");
-            assert_eq!(addr.to_qr_uri(), format!("bitcoin:{}", el));
+            assert_eq!(addr.to_qr_uri(), format!("globalboost:{}", el));
         }
 
         for el in [
-            "bcrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl",
-            "bc1qwqdg6squsna38e46795at95yu9atm8azzmyvckulcc7kytlcckxswvvzej",
+            "gbrt1q2nfxmhd4n3c8834pj72xagvyr9gl57n5r94fsl",
+            "gb1p4486t76tzjttyv48qnxwg4v93affezfzrvjd5t43dndf3dl42p3qtl3d2n",
         ]
         .iter()
         {
             let addr = Address::from_str(el).unwrap().assume_checked();
-            assert_eq!(addr.to_qr_uri(), format!("BITCOIN:{}", el.to_ascii_uppercase()));
+            assert_eq!(addr.to_qr_uri(), format!("GLOBALBOOST:{}", el.to_ascii_uppercase()));
         }
     }
 
