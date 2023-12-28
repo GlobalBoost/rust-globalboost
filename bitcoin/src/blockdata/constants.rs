@@ -124,7 +124,7 @@ pub fn genesis_block(network: Network) -> Block {
                     version: block::Version::ONE,
                     prev_blockhash: Hash::all_zeros(),
                     merkle_root,
-                    time: 1296688602,
+                    time: 1410213600,
                     bits: CompactTarget::from_consensus(0x1e0ffff0),
                     nonce: 237174
                 },
