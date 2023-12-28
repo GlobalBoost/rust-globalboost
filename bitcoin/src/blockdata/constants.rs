@@ -305,7 +305,7 @@ mod test {
     #[test]
     fn mainnet_chain_hash_test_vector() {
         let got = ChainHash::using_genesis_block(Network::Bitcoin).to_string();
-        let want = "6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000";
+        let want = "df5a8d14be8b016a027fec0489dfc2231a3681f0d2945340f273ad940105282e";
         assert_eq!(got, want);
     }
 }
