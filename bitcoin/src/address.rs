@@ -1344,7 +1344,7 @@ mod tests {
             address: Address<V>,
         }
 
-        let addr_str = "33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k";
+        let addr_str = "yAunf1V5u622bnZjtrE4WqBQ9L8k3RXKVL";
         let unchecked = Address::from_str(addr_str).unwrap();
 
         assert_eq!(
