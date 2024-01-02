@@ -103,7 +103,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Error::Base58(ref e) => write_err!(f, "base58 address encoding error"; e),
+            Error::Base58(ref e) => write_err!(f, "base58 address Gabriel encoding error"; e),
             Error::Bech32(ref e) => write_err!(f, "bech32 address encoding error"; e),
             Error::EmptyBech32Payload => write!(f, "the bech32 payload was empty"),
             Error::InvalidBech32Variant { expected, found } => write!(f, "invalid bech32 checksum variant found {:?} when {:?} was expected", found, expected),
