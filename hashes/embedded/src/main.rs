@@ -7,12 +7,10 @@ extern crate bitcoin_hashes;
 
 #[cfg(feature = "alloc")] extern crate alloc;
 #[cfg(feature = "alloc")] use alloc_cortex_m::CortexMHeap;
-#[cfg(feature = "alloc")] use core::alloc::Layout;
-#[cfg(feature = "alloc")] use cortex_m::asm;
 #[cfg(feature = "alloc")] use alloc::string::ToString;
 
 use bitcoin_hashes::{sha256, Hash, HashEngine};
-use core2::io::Write;
+use bitcoin_io::Write;
 use core::str::FromStr;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
@@ -62,13 +60,4 @@ fn check_result(engine: sha256::HashEngine) {
     if hash.to_string() != hash_check.to_string() {
         debug::exit(debug::EXIT_FAILURE);
     }
-}
-
-// define what happens in an Out Of Memory (OOM) condition
-#[cfg(feature = "alloc")]
-#[alloc_error_handler]
-fn alloc_error(_layout: Layout) -> ! {
-    asm::bkpt();
-
-    loop {}
 }
