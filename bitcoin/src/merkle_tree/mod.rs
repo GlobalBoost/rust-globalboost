@@ -1,4 +1,3 @@
-// Written in 2014 by Andrew Poelstra <apoelstra@wpsoftware.net>
 // SPDX-License-Identifier: CC0-1.0
 
 //! Bitcoin merkle tree functions.
@@ -19,12 +18,15 @@ mod block;
 use core::cmp::min;
 use core::iter;
 
-pub use block::{MerkleBlock, MerkleBlockError, PartialMerkleTree};
+use hashes::Hash;
+use io::Write;
 
 use crate::consensus::encode::Encodable;
-use crate::hashes::Hash;
-use crate::io;
 use crate::prelude::*;
+
+#[rustfmt::skip]
+#[doc(inline)]
+pub use self::block::{MerkleBlock, MerkleBlockError, PartialMerkleTree};
 
 /// Calculates the merkle root of a list of *hashes*, inline (in place) in `hashes`.
 ///
@@ -39,7 +41,7 @@ use crate::prelude::*;
 pub fn calculate_root_inline<T>(hashes: &mut [T]) -> Option<T>
 where
     T: Hash + Encodable,
-    <T as Hash>::Engine: io::Write,
+    <T as Hash>::Engine: Write,
 {
     match hashes.len() {
         0 => None,
@@ -57,7 +59,7 @@ where
 pub fn calculate_root<T, I>(mut hashes: I) -> Option<T>
 where
     T: Hash + Encodable,
-    <T as Hash>::Engine: io::Write,
+    <T as Hash>::Engine: Write,
     I: Iterator<Item = T>,
 {
     let first = hashes.next()?;
@@ -89,7 +91,7 @@ where
 fn merkle_root_r<T>(hashes: &mut [T]) -> T
 where
     T: Hash + Encodable,
-    <T as Hash>::Engine: io::Write,
+    <T as Hash>::Engine: Write,
 {
     if hashes.len() == 1 {
         return hashes[0];
@@ -110,10 +112,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use hashes::sha256d;
+
     use super::*;
     use crate::blockdata::block::Block;
     use crate::consensus::encode::deserialize;
-    use crate::hashes::sha256d;
 
     #[test]
     fn both_merkle_root_functions_return_the_same_result() {
@@ -122,7 +125,7 @@ mod tests {
         let block: Block = deserialize(&segwit_block[..]).expect("Failed to deserialize block");
         assert!(block.check_merkle_root()); // Sanity check.
 
-        let hashes_iter = block.txdata.iter().map(|obj| obj.txid().to_raw_hash());
+        let hashes_iter = block.txdata.iter().map(|obj| obj.compute_txid().to_raw_hash());
 
         let mut hashes_array: [sha256d::Hash; 15] = [Hash::all_zeros(); 15];
         for (i, hash) in hashes_iter.clone().enumerate() {

@@ -6,15 +6,16 @@
 //! <https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki>.
 //!
 
-use crate::prelude::*;
 use core::fmt;
-use core::convert::TryFrom;
 
-use crate::io;
-use crate::consensus::encode::{self, ReadExt, WriteExt, Decodable, Encodable, VarInt, serialize, deserialize, MAX_VEC_SIZE};
+use io::{BufRead, Write};
+
+use super::serialize::{Deserialize, Serialize};
+use crate::consensus::encode::{
+    self, deserialize, serialize, Decodable, Encodable, ReadExt, VarInt, WriteExt, MAX_VEC_SIZE,
+};
+use crate::prelude::*;
 use crate::psbt::Error;
-
-use super::serialize::{Serialize, Deserialize};
 
 /// A PSBT key in its raw byte form.
 #[derive(Debug, PartialEq, Hash, Eq, Clone, Ord, PartialOrd)]
@@ -51,7 +52,10 @@ pub type ProprietaryType = u8;
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(crate = "actual_serde"))]
-pub struct ProprietaryKey<Subtype=ProprietaryType> where Subtype: Copy + From<u8> + Into<u8> {
+pub struct ProprietaryKey<Subtype = ProprietaryType>
+where
+    Subtype: Copy + From<u8> + Into<u8>,
+{
     /// Proprietary type prefix used for grouping together keys under some
     /// application and avoid namespace collision
     #[cfg_attr(feature = "serde", serde(with = "crate::serde_utils::hex_bytes"))]
@@ -70,7 +74,7 @@ impl fmt::Display for Key {
 }
 
 impl Key {
-    pub(crate) fn decode<R: io::Read + ?Sized>(r: &mut R) -> Result<Self, Error> {
+    pub(crate) fn decode<R: BufRead + ?Sized>(r: &mut R) -> Result<Self, Error> {
         let VarInt(byte_size): VarInt = Decodable::consensus_decode(r)?;
 
         if byte_size == 0 {
@@ -83,7 +87,8 @@ impl Key {
             return Err(encode::Error::OversizedVectorAllocation {
                 requested: key_byte_size as usize,
                 max: MAX_VEC_SIZE,
-            })?
+            }
+            .into());
         }
 
         let type_value: u8 = Decodable::consensus_decode(r)?;
@@ -100,7 +105,9 @@ impl Key {
 impl Serialize for Key {
     fn serialize(&self) -> Vec<u8> {
         let mut buf = Vec::new();
-        VarInt((self.key.len() + 1) as u64).consensus_encode(&mut buf).expect("in-memory writers don't error");
+        VarInt::from(self.key.len() + 1)
+            .consensus_encode(&mut buf)
+            .expect("in-memory writers don't error");
 
         self.type_value.consensus_encode(&mut buf).expect("in-memory writers don't error");
 
@@ -130,16 +137,16 @@ impl Deserialize for Pair {
 }
 
 impl Pair {
-    pub(crate) fn decode<R: io::Read + ?Sized>(r: &mut R) -> Result<Self, Error> {
-        Ok(Pair {
-            key: Key::decode(r)?,
-            value: Decodable::consensus_decode(r)?,
-        })
+    pub(crate) fn decode<R: BufRead + ?Sized>(r: &mut R) -> Result<Self, Error> {
+        Ok(Pair { key: Key::decode(r)?, value: Decodable::consensus_decode(r)? })
     }
 }
 
-impl<Subtype> Encodable for ProprietaryKey<Subtype> where Subtype: Copy + From<u8> + Into<u8> {
-    fn consensus_encode<W: io::Write + ?Sized>(&self, w: &mut W) -> Result<usize, io::Error> {
+impl<Subtype> Encodable for ProprietaryKey<Subtype>
+where
+    Subtype: Copy + From<u8> + Into<u8>,
+{
+    fn consensus_encode<W: Write + ?Sized>(&self, w: &mut W) -> Result<usize, io::Error> {
         let mut len = self.prefix.consensus_encode(w)? + 1;
         w.emit_u8(self.subtype.into())?;
         w.write_all(&self.key)?;
@@ -148,29 +155,35 @@ impl<Subtype> Encodable for ProprietaryKey<Subtype> where Subtype: Copy + From<u
     }
 }
 
-impl<Subtype> Decodable for ProprietaryKey<Subtype> where Subtype: Copy + From<u8> + Into<u8> {
-    fn consensus_decode<R: io::Read + ?Sized>(r: &mut R) -> Result<Self, encode::Error> {
+impl<Subtype> Decodable for ProprietaryKey<Subtype>
+where
+    Subtype: Copy + From<u8> + Into<u8>,
+{
+    fn consensus_decode<R: BufRead + ?Sized>(r: &mut R) -> Result<Self, encode::Error> {
         let prefix = Vec::<u8>::consensus_decode(r)?;
         let subtype = Subtype::from(r.read_u8()?);
-        let key = read_to_end(r)?;
+
+        // The limit is a DOS protection mechanism the exact value is not
+        // important, 1024 bytes is bigger than any key should be.
+        let mut key = vec![];
+        let _ = r.read_to_limit(&mut key, 1024)?;
 
         Ok(ProprietaryKey { prefix, subtype, key })
     }
 }
 
-impl<Subtype> ProprietaryKey<Subtype> where Subtype: Copy + From<u8> + Into<u8> {
+impl<Subtype> ProprietaryKey<Subtype>
+where
+    Subtype: Copy + From<u8> + Into<u8>,
+{
     /// Constructs full [Key] corresponding to this proprietary key type
-    pub fn to_key(&self) -> Key {
-        Key {
-            type_value: 0xFC,
-            key: serialize(self)
-        }
-    }
+    pub fn to_key(&self) -> Key { Key { type_value: 0xFC, key: serialize(self) } }
 }
 
 impl<Subtype> TryFrom<Key> for ProprietaryKey<Subtype>
 where
-    Subtype:Copy + From<u8> + Into<u8> {
+    Subtype: Copy + From<u8> + Into<u8>,
+{
     type Error = Error;
 
     /// Constructs a [`ProprietaryKey`] from a [`Key`].
@@ -179,24 +192,9 @@ where
     /// Returns [`Error::InvalidProprietaryKey`] if `key` does not start with `0xFC` byte.
     fn try_from(key: Key) -> Result<Self, Self::Error> {
         if key.type_value != 0xFC {
-            return Err(Error::InvalidProprietaryKey)
+            return Err(Error::InvalidProprietaryKey);
         }
 
         Ok(deserialize(&key.key)?)
     }
-}
-
-// core2 doesn't have read_to_end
-pub(crate) fn read_to_end<D: io::Read>(mut d: D) -> Result<Vec<u8>, io::Error> {
-    let mut result = vec![];
-    let mut buf = [0u8; 64];
-    loop {
-        match d.read(&mut buf) {
-            Ok(0) => break,
-            Ok(n) => result.extend_from_slice(&buf[0..n]),
-            Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {},
-            Err(e) => return Err(e),
-        };
-    }
-    Ok(result)
 }

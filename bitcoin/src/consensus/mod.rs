@@ -8,11 +8,20 @@
 
 pub mod encode;
 pub mod params;
-
-pub use self::encode::{Encodable, Decodable, WriteExt, ReadExt};
-pub use self::encode::{serialize, deserialize, deserialize_partial};
-pub use self::params::Params;
-
 #[cfg(feature = "serde")]
-#[cfg_attr(docsrs, doc(cfg(feature = "serde")))]
 pub mod serde;
+#[cfg(feature = "bitcoinconsensus")]
+pub mod validation;
+
+#[rustfmt::skip]                // Keep public re-exports separate.
+#[doc(inline)]
+pub use self::{
+    encode::{deserialize, deserialize_partial, serialize, Decodable, Encodable, ReadExt, WriteExt},
+    params::Params,
+};
+
+#[cfg(feature = "bitcoinconsensus")]
+#[doc(inline)]
+pub use self::validation::{
+    verify_script, verify_script_with_flags, verify_transaction, verify_transaction_with_flags,
+};

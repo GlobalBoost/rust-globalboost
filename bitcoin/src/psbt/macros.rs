@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: CC0-1.0
 
 #[allow(unused_macros)]
-macro_rules! hex_psbt {
-    ($s:expr) => { <$crate::psbt::PartiallySignedTransaction>::deserialize(&<$crate::prelude::Vec<u8> as $crate::hashes::hex::FromHex>::from_hex($s).unwrap()) };
-}
-
 macro_rules! combine {
     ($thing:ident, $slf:ident, $other:ident) => {
         if let (&None, Some($thing)) = (&$slf.$thing, $other.$thing) {
@@ -23,7 +19,7 @@ macro_rules! impl_psbt_de_serialize {
 macro_rules! impl_psbt_deserialize {
     ($thing:ty) => {
         impl $crate::psbt::serialize::Deserialize for $thing {
-            fn deserialize(bytes: &[u8]) -> Result<Self, $crate::psbt::Error> {
+            fn deserialize(bytes: &[u8]) -> core::result::Result<Self, $crate::psbt::Error> {
                 $crate::consensus::deserialize(&bytes[..]).map_err(|e| $crate::psbt::Error::from(e))
             }
         }
@@ -33,9 +29,7 @@ macro_rules! impl_psbt_deserialize {
 macro_rules! impl_psbt_serialize {
     ($thing:ty) => {
         impl $crate::psbt::serialize::Serialize for $thing {
-            fn serialize(&self) -> $crate::prelude::Vec<u8> {
-                $crate::consensus::serialize(self)
-            }
+            fn serialize(&self) -> $crate::prelude::Vec<u8> { $crate::consensus::serialize(self) }
         }
     };
 }
@@ -43,9 +37,7 @@ macro_rules! impl_psbt_serialize {
 macro_rules! impl_psbtmap_serialize {
     ($thing:ty) => {
         impl $crate::psbt::serialize::Serialize for $thing {
-            fn serialize(&self) -> Vec<u8> {
-                self.serialize_map()
-            }
+            fn serialize(&self) -> Vec<u8> { self.serialize_map() }
         }
     };
 }
@@ -53,7 +45,7 @@ macro_rules! impl_psbtmap_serialize {
 macro_rules! impl_psbtmap_deserialize {
     ($thing:ty) => {
         impl $crate::psbt::serialize::Deserialize for $thing {
-            fn deserialize(bytes: &[u8]) -> Result<Self, $crate::psbt::Error> {
+            fn deserialize(bytes: &[u8]) -> core::result::Result<Self, $crate::psbt::Error> {
                 let mut decoder = bytes;
                 Self::decode(&mut decoder)
             }
@@ -64,9 +56,9 @@ macro_rules! impl_psbtmap_deserialize {
 macro_rules! impl_psbtmap_decoding {
     ($thing:ty) => {
         impl $thing {
-            pub(crate) fn decode<R: $crate::io::Read + ?Sized>(
+            pub(crate) fn decode<R: $crate::io::BufRead + ?Sized>(
                 r: &mut R,
-            ) -> Result<Self, $crate::psbt::Error> {
+            ) -> core::result::Result<Self, $crate::psbt::Error> {
                 let mut rv: Self = core::default::Default::default();
 
                 loop {
@@ -156,10 +148,8 @@ macro_rules! impl_psbt_hash_de_serialize {
 macro_rules! impl_psbt_hash_deserialize {
     ($hash_type:ty) => {
         impl $crate::psbt::serialize::Deserialize for $hash_type {
-            fn deserialize(bytes: &[u8]) -> Result<Self, $crate::psbt::Error> {
-                <$hash_type>::from_slice(&bytes[..]).map_err(|e| {
-                    $crate::psbt::Error::from(e)
-                })
+            fn deserialize(bytes: &[u8]) -> core::result::Result<Self, $crate::psbt::Error> {
+                <$hash_type>::from_slice(&bytes[..]).map_err(|e| $crate::psbt::Error::from(e))
             }
         }
     };
@@ -168,9 +158,7 @@ macro_rules! impl_psbt_hash_deserialize {
 macro_rules! impl_psbt_hash_serialize {
     ($hash_type:ty) => {
         impl $crate::psbt::serialize::Serialize for $hash_type {
-            fn serialize(&self) -> $crate::prelude::Vec<u8> {
-                self.as_byte_array().to_vec()
-            }
+            fn serialize(&self) -> $crate::prelude::Vec<u8> { self.as_byte_array().to_vec() }
         }
     };
 }
