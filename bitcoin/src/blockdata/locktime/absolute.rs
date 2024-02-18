@@ -1,4 +1,3 @@
-// Rust Bitcoin Library - Written by the rust-bitcoin developers.
 // SPDX-License-Identifier: CC0-1.0
 
 //! Provides type [`LockTime`] that implements the logic around nLockTime/OP_CHECKLOCKTIMEVERIFY.
@@ -7,23 +6,21 @@
 //! whether `LockTime < LOCKTIME_THRESHOLD`.
 //!
 
-use core::{mem, fmt};
-use core::cmp::{PartialOrd, Ordering};
+use core::cmp::{Ordering, PartialOrd};
+use core::{fmt, mem};
 
-use bitcoin_internals::write_err;
-
+use internals::write_err;
+use io::{BufRead, Write};
 #[cfg(all(test, mutate))]
 use mutagen::mutate;
 
-use crate::consensus::encode::{self, Decodable, Encodable};
-use crate::error::ParseIntError;
-use crate::io::{self, Read, Write};
-use crate::parse::{impl_parse_str_from_int_infallible, impl_parse_str_from_int_fallible};
-use crate::prelude::*;
-use crate::string::FromHexStr;
-
 #[cfg(doc)]
 use crate::absolute;
+use crate::consensus::encode::{self, Decodable, Encodable};
+use crate::error::ParseIntError;
+use crate::parse::{impl_parse_str, impl_parse_str_from_int_infallible};
+use crate::prelude::*;
+use crate::string::FromHexStr;
 
 /// The Threshold for deciding whether a lock time value is a height or a time (see [Bitcoin Core]).
 ///
@@ -69,8 +66,7 @@ pub const LOCK_TIME_THRESHOLD: u32 = 500_000_000;
 ///     _ => panic!("handle invalid comparison error"),
 /// };
 /// ```
-#[allow(clippy::derive_ord_xor_partial_ord)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LockTime {
     /// A block height lock time value.
     ///
@@ -102,6 +98,9 @@ impl LockTime {
     /// If [`crate::Transaction::lock_time`] is set to zero it is ignored, in other words a
     /// transaction with nLocktime==0 is able to be included immediately in any block.
     pub const ZERO: LockTime = LockTime::Blocks(Height::ZERO);
+
+    /// The number of bytes that the locktime contributes to the size of a transaction.
+    pub const SIZE: usize = 4; // Serialized length of a u32.
 
     /// Constructs a `LockTime` from an nLockTime value or the argument to OP_CHEKCLOCKTIMEVERIFY.
     ///
@@ -135,7 +134,7 @@ impl LockTime {
     /// assert!(LockTime::from_height(1653195600).is_err());
     /// ```
     #[inline]
-    pub fn from_height(n: u32) -> Result<Self, Error> {
+    pub fn from_height(n: u32) -> Result<Self, ConversionError> {
         let height = Height::from_consensus(n)?;
         Ok(LockTime::Blocks(height))
     }
@@ -151,7 +150,7 @@ impl LockTime {
     /// assert!(LockTime::from_time(741521).is_err());
     /// ```
     #[inline]
-    pub fn from_time(n: u32) -> Result<Self, Error> {
+    pub fn from_time(n: u32) -> Result<Self, ConversionError> {
         let time = Time::from_consensus(n)?;
         Ok(LockTime::Seconds(time))
     }
@@ -173,9 +172,7 @@ impl LockTime {
 
     /// Returns true if this lock time value is a block time (UNIX timestamp).
     #[inline]
-    pub fn is_block_time(&self) -> bool {
-        !self.is_block_height()
-    }
+    pub fn is_block_time(&self) -> bool { !self.is_block_height() }
 
     /// Returns true if this timelock constraint is satisfied by the respective `height`/`time`.
     ///
@@ -278,16 +275,12 @@ impl_parse_str_from_int_infallible!(LockTime, u32, from_consensus);
 
 impl From<Height> for LockTime {
     #[inline]
-    fn from(h: Height) -> Self {
-        LockTime::Blocks(h)
-    }
+    fn from(h: Height) -> Self { LockTime::Blocks(h) }
 }
 
 impl From<Time> for LockTime {
     #[inline]
-    fn from(t: Time) -> Self {
-        LockTime::Seconds(t)
-    }
+    fn from(t: Time) -> Self { LockTime::Seconds(t) }
 }
 
 impl PartialOrd for LockTime {
@@ -299,6 +292,17 @@ impl PartialOrd for LockTime {
             (Blocks(ref a), Blocks(ref b)) => a.partial_cmp(b),
             (Seconds(ref a), Seconds(ref b)) => a.partial_cmp(b),
             (_, _) => None,
+        }
+    }
+}
+
+impl fmt::Debug for LockTime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use LockTime::*;
+
+        match *self {
+            Blocks(ref h) => write!(f, "{} blocks", h),
+            Seconds(ref t) => write!(f, "{} seconds", t),
         }
     }
 }
@@ -322,7 +326,7 @@ impl fmt::Display for LockTime {
 }
 
 impl FromHexStr for LockTime {
-    type Error = Error;
+    type Error = ParseIntError;
 
     #[inline]
     fn from_hex_str_no_prefix<S: AsRef<str> + Into<String>>(s: S) -> Result<Self, Self::Error> {
@@ -341,7 +345,7 @@ impl Encodable for LockTime {
 
 impl Decodable for LockTime {
     #[inline]
-    fn consensus_decode<R: Read + ?Sized>(r: &mut R) -> Result<Self, encode::Error> {
+    fn consensus_decode<R: BufRead + ?Sized>(r: &mut R) -> Result<Self, encode::Error> {
         u32::consensus_decode(r).map(LockTime::from_consensus)
     }
 }
@@ -370,19 +374,34 @@ impl<'de> serde::Deserialize<'de> for LockTime {
             // calls visit_u64, even when called from Deserializer::deserialize_u32. The
             // other visit_u*s have default implementations that forward to visit_u64.
             fn visit_u64<E: serde::de::Error>(self, v: u64) -> Result<u32, E> {
-                use core::convert::TryInto;
-                v.try_into().map_err(|_| E::invalid_value(serde::de::Unexpected::Unsigned(v), &"a 32-bit number"))
+                v.try_into().map_err(|_| {
+                    E::invalid_value(serde::de::Unexpected::Unsigned(v), &"a 32-bit number")
+                })
             }
             // Also do the signed version, just for good measure.
             fn visit_i64<E: serde::de::Error>(self, v: i64) -> Result<u32, E> {
-                use core::convert::TryInto;
-                v.try_into().map_err(|_| E::invalid_value(serde::de::Unexpected::Signed(v), &"a 32-bit number"))
+                v.try_into().map_err(|_| {
+                    E::invalid_value(serde::de::Unexpected::Signed(v), &"a 32-bit number")
+                })
             }
         }
         deserializer.deserialize_u32(Visitor).map(LockTime::from_consensus)
     }
 }
 
+#[cfg(feature = "ordered")]
+impl ordered::ArbitraryOrd for LockTime {
+    fn arbitrary_cmp(&self, other: &Self) -> Ordering {
+        use LockTime::*;
+
+        match (self, other) {
+            (Blocks(_), Seconds(_)) => Ordering::Less,
+            (Seconds(_), Blocks(_)) => Ordering::Greater,
+            (Blocks(this), Blocks(that)) => this.cmp(that),
+            (Seconds(this), Seconds(that)) => this.cmp(that),
+        }
+    }
+}
 
 /// An absolute block height, guaranteed to always contain a valid height value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -400,16 +419,6 @@ impl Height {
     /// The maximum absolute block height.
     pub const MAX: Self = Height(LOCK_TIME_THRESHOLD - 1);
 
-    /// The minimum absolute block height (0), the genesis block.
-    ///
-    /// This is provided for consistency with Rust 1.41.1, newer code should use [`Height::MIN`].
-    pub const fn min_value() -> Self { Self::MIN }
-
-    /// The maximum absolute block height.
-    ///
-    /// This is provided for consistency with Rust 1.41.1, newer code should use [`Height::MAX`].
-    pub const fn max_value() -> Self { Self::MAX }
-
     /// Constructs a new block height.
     ///
     /// # Errors
@@ -425,11 +434,11 @@ impl Height {
     /// assert_eq!(height.to_consensus_u32(), h);
     /// ```
     #[inline]
-    pub fn from_consensus(n: u32) -> Result<Height, Error> {
+    pub fn from_consensus(n: u32) -> Result<Height, ConversionError> {
         if is_block_height(n) {
             Ok(Self(n))
         } else {
-            Err(ConversionError::invalid_height(n).into())
+            Err(ConversionError::invalid_height(n))
         }
     }
 
@@ -444,27 +453,42 @@ impl Height {
     /// assert!(lock_time.is_block_height());
     /// assert_eq!(lock_time.to_consensus_u32(), n_lock_time);
     #[inline]
-    pub fn to_consensus_u32(self) -> u32 {
-        self.0
-    }
+    pub fn to_consensus_u32(self) -> u32 { self.0 }
 }
 
-impl_parse_str_from_int_fallible!(Height, u32, from_consensus, Error);
-
 impl fmt::Display for Height {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::Display::fmt(&self.0, f) }
 }
 
 impl FromHexStr for Height {
-    type Error = Error;
+    type Error = ParseHeightError;
 
     #[inline]
     fn from_hex_str_no_prefix<S: AsRef<str> + Into<String>>(s: S) -> Result<Self, Self::Error> {
-        let height = crate::parse::hex_u32(s)?;
-        Self::from_consensus(height)
+        parse_hex(s, Self::from_consensus)
     }
+}
+
+impl_parse_str!(Height, ParseHeightError, parser(Height::from_consensus));
+
+/// Error returned when parsing block height fails.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ParseHeightError(ParseError);
+
+impl fmt::Display for ParseHeightError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.display(f, "block height", 0, LOCK_TIME_THRESHOLD - 1)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ParseHeightError {
+    // To be consistent with `write_err` we need to **not** return source in case of overflow
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { self.0.source() }
+}
+
+impl From<ParseError> for ParseHeightError {
+    fn from(value: ParseError) -> Self { Self(value) }
 }
 
 /// A UNIX timestamp, seconds since epoch, guaranteed to always contain a valid time value.
@@ -484,16 +508,6 @@ impl Time {
     /// The maximum absolute block time (Sun Feb 07 2106 06:28:15 GMT+0000).
     pub const MAX: Self = Time(u32::max_value());
 
-    /// The minimum absolute block time.
-    ///
-    /// This is provided for consistency with Rust 1.41.1, newer code should use [`Time::MIN`].
-    pub const fn min_value() -> Self { Self::MIN }
-
-    /// The maximum absolute block time.
-    ///
-    /// This is provided for consistency with Rust 1.41.1, newer code should use [`Time::MAX`].
-    pub const fn max_value() -> Self { Self::MAX }
-
     /// Constructs a new block time.
     ///
     /// # Errors
@@ -509,11 +523,11 @@ impl Time {
     /// assert_eq!(time.to_consensus_u32(), t);
     /// ```
     #[inline]
-    pub fn from_consensus(n: u32) -> Result<Time, Error> {
+    pub fn from_consensus(n: u32) -> Result<Time, ConversionError> {
         if is_block_time(n) {
             Ok(Self(n))
         } else {
-            Err(ConversionError::invalid_time(n).into())
+            Err(ConversionError::invalid_time(n))
         }
     }
 
@@ -528,38 +542,73 @@ impl Time {
     /// assert_eq!(lock_time.to_consensus_u32(), n_lock_time);
     /// ```
     #[inline]
-    pub fn to_consensus_u32(self) -> u32 {
-        self.0
-    }
+    pub fn to_consensus_u32(self) -> u32 { self.0 }
 }
 
-impl_parse_str_from_int_fallible!(Time, u32, from_consensus, Error);
-
 impl fmt::Display for Time {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { fmt::Display::fmt(&self.0, f) }
 }
 
 impl FromHexStr for Time {
-    type Error = Error;
+    type Error = ParseTimeError;
 
     #[inline]
     fn from_hex_str_no_prefix<S: AsRef<str> + Into<String>>(s: S) -> Result<Self, Self::Error> {
-        let time = crate::parse::hex_u32(s)?;
-        Time::from_consensus(time)
+        parse_hex(s, Self::from_consensus)
     }
 }
 
-/// Returns true if `n` is a block height i.e., less than 500,000,000.
-fn is_block_height(n: u32) -> bool {
-    n < LOCK_TIME_THRESHOLD
+impl_parse_str!(Time, ParseTimeError, parser(Time::from_consensus));
+
+/// Error returned when parsing block time fails.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ParseTimeError(ParseError);
+
+impl fmt::Display for ParseTimeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.display(f, "block height", LOCK_TIME_THRESHOLD, u32::MAX)
+    }
 }
 
-/// Returns true if `n` is a UNIX timestamp i.e., greater than or equal to 500,000,000.
-fn is_block_time(n: u32) -> bool {
-    n >= LOCK_TIME_THRESHOLD
+#[cfg(feature = "std")]
+impl std::error::Error for ParseTimeError {
+    // To be consistent with `write_err` we need to **not** return source in case of overflow
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { self.0.source() }
 }
+
+impl From<ParseError> for ParseTimeError {
+    fn from(value: ParseError) -> Self { Self(value) }
+}
+
+fn parser<T, E, S, F>(f: F) -> impl FnOnce(S) -> Result<T, E>
+where
+    E: From<ParseError>,
+    S: AsRef<str> + Into<String>,
+    F: FnOnce(u32) -> Result<T, ConversionError>,
+{
+    move |s| {
+        let n = s.as_ref().parse::<i64>().map_err(ParseError::invalid_int(s))?;
+        let n = u32::try_from(n).map_err(|_| ParseError::Conversion(n))?;
+        f(n).map_err(ParseError::from).map_err(Into::into)
+    }
+}
+
+fn parse_hex<T, E, S, F>(s: S, f: F) -> Result<T, E>
+where
+    E: From<ParseError>,
+    S: AsRef<str> + Into<String>,
+    F: FnOnce(u32) -> Result<T, ConversionError>,
+{
+    let n = i64::from_str_radix(s.as_ref(), 16).map_err(ParseError::invalid_int(s))?;
+    let n = u32::try_from(n).map_err(|_| ParseError::Conversion(n))?;
+    f(n).map_err(ParseError::from).map_err(Into::into)
+}
+
+/// Returns true if `n` is a block height i.e., less than 500,000,000.
+fn is_block_height(n: u32) -> bool { n < LOCK_TIME_THRESHOLD }
+
+/// Returns true if `n` is a UNIX timestamp i.e., greater than or equal to 500,000,000.
+fn is_block_time(n: u32) -> bool { n >= LOCK_TIME_THRESHOLD }
 
 /// Catchall type for errors that relate to time locks.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -575,7 +624,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::Error::*;
+        use Error::*;
 
         match *self {
             Conversion(ref e) => write_err!(f, "error converting lock time value"; e),
@@ -586,10 +635,9 @@ impl fmt::Display for Error {
 }
 
 #[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        use self::Error::*;
+        use Error::*;
 
         match *self {
             Conversion(ref e) => Some(e),
@@ -601,27 +649,22 @@ impl std::error::Error for Error {
 
 impl From<ConversionError> for Error {
     #[inline]
-    fn from(e: ConversionError) -> Self {
-        Error::Conversion(e)
-    }
+    fn from(e: ConversionError) -> Self { Self::Conversion(e) }
 }
 
 impl From<OperationError> for Error {
     #[inline]
-    fn from(e: OperationError) -> Self {
-        Error::Operation(e)
-    }
+    fn from(e: OperationError) -> Self { Self::Operation(e) }
 }
 
 impl From<ParseIntError> for Error {
     #[inline]
-    fn from(e: ParseIntError) -> Self {
-        Error::Parse(e)
-    }
+    fn from(e: ParseIntError) -> Self { Self::Parse(e) }
 }
 
 /// An error that occurs when converting a `u32` to a lock time variant.
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ConversionError {
     /// The expected timelock unit, height (blocks) or time (seconds).
     unit: LockTimeUnit,
@@ -631,20 +674,10 @@ pub struct ConversionError {
 
 impl ConversionError {
     /// Constructs a `ConversionError` from an invalid `n` when expecting a height value.
-    fn invalid_height(n: u32) -> Self {
-        Self {
-            unit: LockTimeUnit::Blocks,
-            input: n,
-        }
-    }
+    fn invalid_height(n: u32) -> Self { Self { unit: LockTimeUnit::Blocks, input: n } }
 
     /// Constructs a `ConversionError` from an invalid `n` when expecting a time value.
-    fn invalid_time(n: u32) -> Self {
-        Self {
-            unit: LockTimeUnit::Seconds,
-            input: n,
-        }
-    }
+    fn invalid_time(n: u32) -> Self { Self { unit: LockTimeUnit::Seconds, input: n } }
 }
 
 impl fmt::Display for ConversionError {
@@ -654,8 +687,9 @@ impl fmt::Display for ConversionError {
 }
 
 #[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-impl std::error::Error for ConversionError {}
+impl std::error::Error for ConversionError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { None }
+}
 
 /// Describes the two types of locking, lock-by-blockheight and lock-by-blocktime.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
@@ -678,7 +712,7 @@ impl fmt::Display for LockTimeUnit {
 }
 
 /// Errors than occur when operating on lock times.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum OperationError {
     /// Cannot compare different lock time units (height vs time).
@@ -687,17 +721,89 @@ pub enum OperationError {
 
 impl fmt::Display for OperationError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::OperationError::*;
+        use OperationError::*;
 
         match *self {
-            InvalidComparison => f.write_str("cannot compare different lock units (height vs time)"),
+            InvalidComparison =>
+                f.write_str("cannot compare different lock units (height vs time)"),
         }
     }
 }
 
 #[cfg(feature = "std")]
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-impl std::error::Error for OperationError {}
+impl std::error::Error for OperationError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        use OperationError::*;
+
+        match *self {
+            InvalidComparison => None,
+        }
+    }
+}
+
+/// Internal - common representation for height and time.
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum ParseError {
+    InvalidInteger { source: core::num::ParseIntError, input: String },
+    // unit implied by outer type
+    // we use i64 to have nicer messages for negative values
+    Conversion(i64),
+}
+
+impl ParseError {
+    fn invalid_int<S: Into<String>>(s: S) -> impl FnOnce(core::num::ParseIntError) -> Self {
+        move |source| Self::InvalidInteger { source, input: s.into() }
+    }
+
+    fn display(&self, f: &mut fmt::Formatter<'_>, subject: &str, lower_bound: u32, upper_bound: u32) -> fmt::Result {
+        use core::num::IntErrorKind;
+
+        use ParseError::*;
+
+        match self {
+            InvalidInteger { source, input } if *source.kind() == IntErrorKind::PosOverflow => {
+                write!(f, "{} {} is above limit {}", subject, input, upper_bound)
+            }
+            InvalidInteger { source, input } if *source.kind() == IntErrorKind::NegOverflow => {
+                write!(f, "{} {} is below limit {}", subject, input, lower_bound)
+            }
+            InvalidInteger { source, input } => {
+                write_err!(f, "failed to parse {} as {}", input, subject; source)
+            }
+            Conversion(value) if *value < i64::from(lower_bound) => {
+                write!(f, "{} {} is below limit {}", subject, value, lower_bound)
+            }
+            Conversion(value) => {
+                write!(f, "{} {} is above limit {}", subject, value, upper_bound)
+            }
+        }
+    }
+
+    // To be consistent with `write_err` we need to **not** return source in case of overflow
+    #[cfg(feature = "std")]
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        use core::num::IntErrorKind;
+
+        use ParseError::*;
+
+        match self {
+            InvalidInteger { source, .. } if *source.kind() == IntErrorKind::PosOverflow => None,
+            InvalidInteger { source, .. } if *source.kind() == IntErrorKind::NegOverflow => None,
+            InvalidInteger { source, .. } => Some(source),
+            Conversion(_) => None,
+        }
+    }
+}
+
+impl From<ParseIntError> for ParseError {
+    fn from(value: ParseIntError) -> Self {
+        Self::InvalidInteger { source: value.source, input: value.input }
+    }
+}
+
+impl From<ConversionError> for ParseError {
+    fn from(value: ConversionError) -> Self { Self::Conversion(value.input.into()) }
+}
 
 #[cfg(test)]
 mod tests {
@@ -841,7 +947,7 @@ mod tests {
         assert!(!lock.is_implied_by(LockTime::from_consensus(750_004)));
         assert!(lock.is_implied_by(LockTime::from_consensus(750_005)));
         assert!(lock.is_implied_by(LockTime::from_consensus(750_006)));
-   }
+    }
 
     #[test]
     fn time_correctly_implies() {
@@ -851,7 +957,7 @@ mod tests {
         assert!(!lock.is_implied_by(LockTime::from_consensus(1700000004)));
         assert!(lock.is_implied_by(LockTime::from_consensus(1700000005)));
         assert!(lock.is_implied_by(LockTime::from_consensus(1700000006)));
-   }
+    }
 
     #[test]
     fn incorrect_units_do_not_imply() {
